@@ -193,7 +193,7 @@ The following diagram shows all steps to generate the user's login data hash fro
 
 ---
 
-## Video
+## Vide
 
 The video of the Decentralized application that shows how the BBA works
 
