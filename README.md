@@ -16,7 +16,11 @@ Blockchain can be defined as a decentralized, distributed and cryptographic secu
 
 During sign up process, the user's login hash must be stored to the smart contract, and since this action writes information on the Blockchain, the user must pay the transaction gas. This could demotivate users to use BBA, however, one can imagine storing this information not in a smart contract, but either on IPFS for public use or to a private Blockchain for business use. The gas fees are paid only for signing up, the login process does not require writing data in the smart contract, however, approving the data signature with the account which is free of gas is required. The smart contract is shown bellow with javascript functions that allow to validate the process.
 
-```solidity
+```Solidity
+//===================
+// Authentication.sol
+//===================
+
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.6;
 
@@ -60,4 +64,101 @@ contract Authentication {
         return user[msg.sender].userAddress;
     }
 }
+```
+
+---
+
+```Javascript
+//==================
+// AuthValidation.js
+//==================
+
+/*
+* @dev validates the authentication
+* by Samuel Gwlanold Edoumou
+*/
+
+import SignData from './SignData';
+
+const AuthValidation = async (username, accountAddress, password, digiCode, web3, contract) => {
+
+    let userAddress = await contract.methods.getUserAddress().call({ from: accountAddress });
+
+    if (userAddress.toLowerCase() !== accountAddress.toLowerCase()) {
+        return false;
+    } else {
+        let signedData = await SignData(username, accountAddress, web3);
+        let passwordDigiCodeHash = await web3.eth.accounts.hashMessage(password + digiCode);
+
+        let hash = await web3.eth.accounts.hashMessage(signedData + passwordDigiCodeHash);
+
+        // get hash from the contract
+        let hashFromContract = await contract.methods.getSignatureHash().call({ from: accountAddress });
+
+        if (hash === hashFromContract) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
+export default AuthValidation;
+```
+
+---
+
+```Javascript
+//======================
+// AuthenticationHash.js
+//======================
+
+/*
+* @dev generates the user login hash
+* by Samuel Gwlanold Edoumou
+*/
+
+import SignData from './SignData';
+
+const AuthenticationHash = async (username, accountAddress, password, digiCode, web3) => {
+    let signedMessage = await SignData(username, accountAddress, web3);
+    let passwordDigiCodeHash = await web3.eth.accounts.hashMessage(password + digiCode);
+
+    return await web3.eth.accounts.hashMessage(signedMessage + passwordDigiCodeHash);
+}
+
+export default AuthenticationHash;
+```
+
+---
+
+```Javascript
+//============
+// SignData.js
+//============
+
+/*
+* @dev returns the unique hash based on the username and ethereum address
+* by Samuel Gwlanold Edoumou
+*/
+
+const SignData = async (username, accountAddress, web3) => {
+    let signedData;
+
+    await web3.eth.personal.sign(
+        username,
+        accountAddress,
+        (err, signature) => {
+            if (err) {
+                signedData = err;
+            } else {
+                signedData = web3.eth.accounts.hashMessage(signature);
+            }
+        }
+    );
+
+    return signedData;
+}
+
+export default SignData;
 ```
