@@ -16,7 +16,7 @@ Blockchain can be defined as a decentralized, distributed and cryptographic secu
 
 During sign up process, the user's login hash must be stored to the smart contract, and since this action writes information on the Blockchain, the user must pay the transaction gas. This could demotivate users to use BBA, however, one can imagine storing this information not in a smart contract, but either on IPFS for public use or to a private Blockchain for business use. The gas fees are paid only for signing up, the login process does not require writing data in the smart contract, however, approving the data signature with the account which is free of gas is required. The smart contract is shown bellow with javascript functions that allow to validate the process.
 
-```Solidity
+```solidity
 //===================
 // Authentication.sol
 //===================
@@ -68,97 +68,117 @@ contract Authentication {
 
 ---
 
-```Javascript
+```javascript
 //==================
 // AuthValidation.js
 //==================
 
 /*
-* @dev validates the authentication
-* by Samuel Gwlanold Edoumou
-*/
+ * @dev validates the authentication
+ * by Samuel Gwlanold Edoumou
+ */
 
-import SignData from './SignData';
+import SignData from "./SignData";
 
-const AuthValidation = async (username, accountAddress, password, digiCode, web3, contract) => {
+const AuthValidation = async (
+  username,
+  accountAddress,
+  password,
+  digiCode,
+  web3,
+  contract
+) => {
+  let userAddress = await contract.methods
+    .getUserAddress()
+    .call({ from: accountAddress });
 
-    let userAddress = await contract.methods.getUserAddress().call({ from: accountAddress });
+  if (userAddress.toLowerCase() !== accountAddress.toLowerCase()) {
+    return false;
+  } else {
+    let signedData = await SignData(username, accountAddress, web3);
+    let passwordDigiCodeHash = await web3.eth.accounts.hashMessage(
+      password + digiCode
+    );
 
-    if (userAddress.toLowerCase() !== accountAddress.toLowerCase()) {
-        return false;
+    let hash = await web3.eth.accounts.hashMessage(
+      signedData + passwordDigiCodeHash
+    );
+
+    // get hash from the contract
+    let hashFromContract = await contract.methods
+      .getSignatureHash()
+      .call({ from: accountAddress });
+
+    if (hash === hashFromContract) {
+      return true;
     } else {
-        let signedData = await SignData(username, accountAddress, web3);
-        let passwordDigiCodeHash = await web3.eth.accounts.hashMessage(password + digiCode);
-
-        let hash = await web3.eth.accounts.hashMessage(signedData + passwordDigiCodeHash);
-
-        // get hash from the contract
-        let hashFromContract = await contract.methods.getSignatureHash().call({ from: accountAddress });
-
-        if (hash === hashFromContract) {
-            return true;
-        } else {
-            return false;
-        }
+      return false;
     }
-}
+  }
+};
 
 export default AuthValidation;
 ```
 
 ---
 
-```Javascript
+```javascript
 //======================
 // AuthenticationHash.js
 //======================
 
 /*
-* @dev generates the user login hash
-* by Samuel Gwlanold Edoumou
-*/
+ * @dev generates the user login hash
+ * by Samuel Gwlanold Edoumou
+ */
 
-import SignData from './SignData';
+import SignData from "./SignData";
 
-const AuthenticationHash = async (username, accountAddress, password, digiCode, web3) => {
-    let signedMessage = await SignData(username, accountAddress, web3);
-    let passwordDigiCodeHash = await web3.eth.accounts.hashMessage(password + digiCode);
+const AuthenticationHash = async (
+  username,
+  accountAddress,
+  password,
+  digiCode,
+  web3
+) => {
+  let signedMessage = await SignData(username, accountAddress, web3);
+  let passwordDigiCodeHash = await web3.eth.accounts.hashMessage(
+    password + digiCode
+  );
 
-    return await web3.eth.accounts.hashMessage(signedMessage + passwordDigiCodeHash);
-}
+  return await web3.eth.accounts.hashMessage(
+    signedMessage + passwordDigiCodeHash
+  );
+};
 
 export default AuthenticationHash;
 ```
 
 ---
 
-```Javascript
+```javascript
 //============
 // SignData.js
 //============
 
 /*
-* @dev returns the unique hash based on the username and ethereum address
-* by Samuel Gwlanold Edoumou
-*/
+ * @dev returns the unique hash based on the username and ethereum address
+ * by Samuel Gwlanold Edoumou
+ */
 
 const SignData = async (username, accountAddress, web3) => {
-    let signedData;
+  let signedData;
 
-    await web3.eth.personal.sign(
-        username,
-        accountAddress,
-        (err, signature) => {
-            if (err) {
-                signedData = err;
-            } else {
-                signedData = web3.eth.accounts.hashMessage(signature);
-            }
-        }
-    );
+  await web3.eth.personal.sign(username, accountAddress, (err, signature) => {
+    if (err) {
+      signedData = err;
+    } else {
+      signedData = web3.eth.accounts.hashMessage(signature);
+    }
+  });
 
-    return signedData;
-}
+  return signedData;
+};
 
 export default SignData;
 ```
@@ -170,3 +190,13 @@ export default SignData;
 The following diagram shows all steps to generate the user's login data hash from the username, the password, the 6 digit code and the ethereum address. To register the user must fill a form to provide the username, the password and the 6 digit code, the ethereum address is retrieved directly from the wallet. This address is associated to the username to generate a signature via the web3 function sign, the generated signature is hashed (hash1). The password is associated with the 6 digit code to generate another hash (hash2). The two hashes are combined to generated the final hash that is stored in the smart contract. To login, the user must be connected to the Blockchain with the same address used during registration, and fill the login form with right username, password and the 6 digit code. The back-end code then generates the hash with this login information and compares it with the hash that was stored in the smart contract by the ethereum address which request the login, if the two hashes match, then the user is authorized to login, if not, the access is denied.
 
 ![alt text](https://github.com/Edoumou/blockchain-based-authentication/blob/main/client/src/img/pdf/diagram.png "BBA diagram")
+
+---
+
+## Video
+
+The video of the Decentralized application that shows how the BBA works
+
+<a href="https://vimeo.com/567987840">
+    <img src='https://github.com/Edoumou/blockchain-based-authentication/blob/main/client/src/img/pdf/diagram.png' alt='BBA video' />
+</a>
