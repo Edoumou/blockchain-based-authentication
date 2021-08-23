@@ -5,10 +5,6 @@ require('./client/node_modules/dotenv').config();
 const MNEMONIC = process.env.REACT_APP_MNEMONIC;
 const RINKEBY_KEY = process.env.REACT_APP_RINKEBY_KEY;
 
-
-console.log("MNEMONIC =", MNEMONIC);
-console.log("RINKEBY_KEY =", RINKEBY_KEY);
-
 module.exports = {
   contracts_build_directory: path.join(__dirname, "client/src/contracts"),
   networks: {
